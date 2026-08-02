@@ -1,0 +1,364 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Particle Animation - Lag Free Chrome</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.8s ease-out;
+        }
+
+        .intro-text {
+            color: #ff69b4;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-align: center;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px #ff4d8d, 0 0 30px #ff1a75;
+            animation: pulseGlow 1.2s infinite alternate;
+            padding: 0 20px;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(0.98); }
+            100% { transform: scale(1.03); }
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: none;
+        }
+
+        .controls-wrapper {
+            position: absolute;
+            bottom: 8%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 85%;
+            max-width: 350px;
+            opacity: 0;
+            transition: opacity 1s ease-in;
+        }
+
+        .input-box-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(255, 105, 180, 0.5);
+            border-radius: 25px;
+            padding: 4px 8px 4px 18px;
+            backdrop-filter: blur(5px);
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ff69b4;
+            font-size: 16px;
+            outline: none;
+            -webkit-user-select: auto;
+            user-select: auto;
+        }
+
+        .edit-btn {
+            background: rgba(255, 105, 180, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #ff69b4;
+            font-size: 18px;
+        }
+
+        .color-palette {
+            display: none;
+            gap: 10px;
+            background: rgba(20, 20, 20, 0.85);
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+        }
+
+        .color-palette.show {
+            display: flex;
+        }
+
+        .color-dot {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="splashScreen">
+        <div class="intro-text">MADE BY : DEDUN DHIREN</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="controls-wrapper" id="controlsWrapper">
+        <div class="color-palette" id="colorPalette">
+            <div class="color-dot" style="background: #ff4d8d;" onclick="changeColor('#ff4d8d')"></div> 
+            <div class="color-dot" style="background: #00f3ff;" onclick="changeColor('#00f3ff')"></div> 
+            <div class="color-dot" style="background: #ffaa00;" onclick="changeColor('#ffaa00')"></div> 
+            <div class="color-dot" style="background: #00ff66;" onclick="changeColor('#00ff66')"></div> 
+            <div class="color-dot" style="background: #b026ff;" onclick="changeColor('#b026ff')"></div> 
+            <div class="color-dot" style="background: #ffffff;" onclick="changeColor('#ffffff')"></div> 
+        </div>
+
+        <div class="input-box-container" id="inputContainer">
+            <input type="text" id="textInput" placeholder="Write your text here..." autocomplete="off">
+            <button class="edit-btn" id="editBtn">🎨</button>
+        </div>
+    </div>
+
+    <script>
+        const splashScreen = document.getElementById('splashScreen');
+        const controlsWrapper = document.getElementById('controlsWrapper');
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                splashScreen.style.opacity = '0';
+                controlsWrapper.style.opacity = '1';
+                setTimeout(() => { splashScreen.style.display = 'none'; }, 800);
+            }, 1500);
+        });
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Performance boost for Chrome
+        const input = document.getElementById('textInput');
+        const editBtn = document.getElementById('editBtn');
+        const colorPalette = document.getElementById('colorPalette');
+        const inputContainer = document.getElementById('inputContainer');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let touchX = null;
+        let touchY = null;
+        let currentColor = '#ff4d8d';
+
+        editBtn.addEventListener('click', () => {
+            colorPalette.classList.toggle('show');
+        });
+
+        function changeColor(color) {
+            currentColor = color;
+            input.style.color = color;
+            editBtn.style.color = color;
+            inputContainer.style.borderColor = color;
+            updateTargets();
+            colorPalette.classList.remove('show');
+        }
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        function setTouchPos(e) {
+            const touch = e.touches ? e.touches[0] : e;
+            touchX = touch.clientX;
+            touchY = touch.clientY;
+        }
+
+        function clearTouchPos() {
+            touchX = null;
+            touchY = null;
+        }
+
+        canvas.addEventListener('touchstart', setTouchPos, {passive: true});
+        canvas.addEventListener('touchmove', setTouchPos, {passive: true});
+        canvas.addEventListener('touchend', clearTouchPos);
+        canvas.addEventListener('mousemove', setTouchPos);
+        canvas.addEventListener('mouseleave', clearTouchPos);
+
+        const PARTICLE_COUNT = 1500; // Optimized count for zero lag
+        let particles = [];
+        let targetPoints = [];
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = Math.random() * 1.2 + 0.8;
+                this.color = currentColor;
+            }
+
+            update() {
+                if (touchX !== null && touchY !== null) {
+                    let dx = this.x - touchX;
+                    let dy = this.y - touchY;
+                    let distSq = dx * dx + dy * dy;
+                    let maxDistSq = 120 * 120;
+
+                    if (distSq < maxDistSq && distSq > 0) {
+                        let dist = Math.sqrt(distSq);
+                        let force = (120 - dist) / 120;
+                        this.vx += (dx / dist) * force * 10;
+                        this.vy += (dy / dist) * force * 10;
+                    }
+                }
+
+                this.vx += (this.targetX - this.x) * 0.05;
+                this.vy += (this.targetY - this.y) * 0.05;
+
+                this.vx *= 0.8;
+                this.vy *= 0.8;
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+        }
+
+        function createHeartPoints() {
+            const points = [];
+            const scale = Math.min(width, height) / 38;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const x = 16 * Math.sin(t) ** 3;
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                
+                const fillFactor = Math.sqrt(Math.random()); 
+                points.push({
+                    x: width / 2 + x * scale * fillFactor,
+                    y: height / 2 - 20 + y * scale * fillFactor,
+                    color: currentColor
+                });
+            }
+            return points;
+        }
+
+        function createTextPoints(text) {
+            const points = [];
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+
+            let fontSize = Math.min(width / (text.length * 0.75), 120);
+            tempCtx.font = `bold ${fontSize}px sans-serif`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+            tempCtx.fillText(text, width / 2, height / 2 - 20);
+
+            const imgData = tempCtx.getImageData(0, 0, width, height).data;
+            const step = 4; // Higher step = less points = faster performance
+            
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const index = (y * width + x) * 4;
+                    if (imgData[index + 3] > 128) {
+                        points.push({ x, y, color: currentColor });
+                    }
+                }
+            }
+            return points;
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new Particle());
+            }
+            updateTargets();
+        }
+
+        function updateTargets() {
+            const text = input.value.trim();
+            if (text === "") {
+                targetPoints = createHeartPoints();
+            } else {
+                targetPoints = createTextPoints(text);
+            }
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                if (targetPoints.length > 0) {
+                    const target = targetPoints[i % targetPoints.length];
+                    particles[i].targetX = target.x;
+                    particles[i].targetY = target.y;
+                    particles[i].color = target.color || currentColor;
+                }
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = currentColor;
+            ctx.beginPath();
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                p.update();
+                ctx.moveTo(p.x + p.radius, p.y);
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            }
+            ctx.fill();
+
+            requestAnimationFrame(animate);
+        }
+
+        input.addEventListener('input', updateTargets);
+
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
